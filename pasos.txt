@@ -1,0 +1,283 @@
+El proyecto se debe dividir, para no joderse la puta vida.
+
+cors nos permite conectarnos entre frontend and backend;
+dotenv nos permite acceder a las variables de entorno, Para asegurar cadenas(string);
+
+1) creamos las carpetas src, dentro de estas las subcarpetas: controllers, models, y routes, sus nombres ya explican su existencia. tres archivos, app, database, index;
+
+2)En este segundo paso configuramos la base de datos, creamos la base de datos con dotenv, la requerimos en el index>require('dotenv').config();
+const mongoose = require("mongoose");
+ 
+const uri =process.env.MONGODB_URI?
+           process.env.MONGODB_URI:
+           'mongodb://localhost:27017/bastardos';
+
+mongoose.connect(uri,{
+    useUnifiedTopology:true,
+    useCreateIndex:true,
+    useNewUrlParser:true    
+})
+
+const connection = mongoose.connection;
+
+connection.once("open",()=>{
+    console.log("DB is connected")
+});
+
+De esta forma configuramos el archivo database.js;
+
+3) Configurar el servidor con express: debemos gestionar los setting, middlewares, routes;
+
+los meddleware son funciones, se encarga de ejecutarse antes de llegar a las rutas;
+
+cors es uno de ellos nos permite conectar el backend y el frontend;
+
+Dado que vamos a crear un servidor para interactuar con una aplicación, le anteponemos a las rutas la palabra api;
+
+Esta será la configuración de nuestro archivo app, iniciamos con los siguiente:
+
+const express = require("express");
+// Escritura ES5;
+const app = express();
+const cors = require("cors");
+// Settings, si el lugar donde lo despleguemos (geroku), será 
+app.set('port',process.env.PORT || 4000);
+
+// middlewares
+app.use(cors());
+app.use(express.json());
+
+// routes:
+app.use('/api/users', require('./routes/users'));
+app.use('/api/notes', require('./routes/notes'));
+
+module.exports = app;
+
+
+
+los siguientes pasos nos permitirán llevar a cabo lo anteriormente dicho:
+
+const cors = require("cors");
+// Settings, si el lugar donde lo despleguemos (Heroku), será 
+app.set('port',process.env.PORT || 4000);
+
+// middlewares
+app.use(cors());
+app.use(express.json());
+
+//Routes:
+app.get("/api/user",(req,res)=>{
+    res.send("User routes")
+});
+
+app.get("/api/notes",(req,res)=>{
+    res.send("notes routes")
+});
+
+4)Configuración de rutas: 
+en el app va los siguiente:
+// routes:
+app.use('/api/users', require('./routes/users'));
+app.use('/api/notes', require('./routes/notes'));
+
+En la carpeta routes vamos a crear los archivos notes/users
+en cada uno de ellos escribiremos lo siguiente respectivamente:
+const {Router} = require("express");
+const router = Router();
+
+
+router.route("/")
+    .get((req,res)=>{
+        res.send("notes routes")
+    })
+
+module.exports = router;
+
+4)Este será las indicaciones con controllers
+En los controladores  utilizamos básicamente para procesar las rutas de forma eficiente, en las rutas irá el siguiente código:
+ejemplo:
+const {getUser,createUser,deleteUser} = require("../controllers/users.controllers");
+
+router.route("/")
+    .get(getUser)
+    .post(createUser);
+
+en la carpeta controllers, en cada uno de sus archivos(user,note), prodrá leerse de la siguiente forma:
+
+const notesCtrl = {};
+
+notesCtrl.getNotes = (req,res)=>{
+    res.json({messages:"nota numero 2"})
+}
+
+module.exports = notesCtrl;
+
+De está forma se modularizará el nuestra app;
+
+5)En este paso, creamos los modelos de base de datos, por ejemplo:
+const {Schema,model} = require("mongoose");
+
+const noteSchema = new Schema({
+    title:{type:String, required:true},
+    content:{type:String, required:true},
+    date:{type:Date,dafault:Date.now},
+    author:String,
+},{timestamps:true})
+
+// timestamps nos permitirá guardar el la fecha de la creación del document.
+
+module.exports = model("Note",noteSchema);
+ 
+En los controladores llamamos  el modelo de cada uno, en las rutas y sus diferentes métodos implementamos la respectiva, creación, lectura, actualización y borrado de nuestros documentos mongo;
+ejemplo para los bastardos de una posteridad no muy lejana;
+
+6)En este lugar crearemos el frontend con react, npx create-react-app "App's name"
+ En cada una de las mismas creamos los componentes correspondientes;
+createNote, createUser,Navigation,NoteList. descrargamos el módulo 
+react-rotuer-dom, para configurar las rutas;
+
+7)Ya en este paso, debemos configurar bootstrap darle estilo a nuestro proyecto:
+install bootstrap, node-sass, después lo implementamos en el archivo "app";
+
+8)Debemos instalar axios para traer la info de nuestro backend; 
+entonces, hacemos el siguiente código:
+
+    async componentDidMount(){
+       const res = await axios.get('http://localhost:4000/api/users');
+
+       this.setState({user:res.data});
+       console.log(this.state.user)
+    }
+También estaremos pendiente al cambio de los inputs:
+   onChangeUserName = (e)=>{
+        // console.log(e.target.value)
+        this.setState({username:e.target.value})
+        console.log(this.state.username)
+    }
+
+Luego de ello, creamos un formulario y lista desordenada.
+
+8)Ya en este paso comfiguraremos todas las peticiones al backend de parte de frontend:
+React http/update/delete
+
+de nuyevo implementamos axios para crear un usuario, también configuramosel form para que así fuese;
+
+    onSubmit =async (e) =>{
+        
+        e.preventDefault();
+      await axios.post('http://localhost:4000/api/users',
+        {
+           username:this.state.username 
+        });
+        this.setState({username:''})
+        this.getUser();
+    }  
+
+    deleteUser = async (id)=>{
+        await axios.delete(`http://localhost:4000/api/users/${id}`);
+        this.getUser();
+    }
+
+9)Componentes de notas:
+Los componetes de notas, será similar a los de user, en el formulario los inputs  estarán a la escucha de los cambios, estos a su vez, actualizaran el estado de nuestro componente Notes; 
+El siguiente código os podrá dar una mejor ilustración:
+
+ this.state = {
+            users:[],
+            userselected:'',
+            title:'',
+            content:'',
+            date: new Date(),
+            editing:false,
+            _id:''
+        }
+    }
+
+    
+    async componentDidMount(){
+        const  users = await axios.get("http://localhost:4000/api/users")
+        
+        this.setState({users:users.data.map(user => user.username )});
+        
+    }
+    
+    onInputChange = (e)=>{
+        
+        this.setState({[e.target.name]:e.target.value});
+    }
+    
+    onChangeDay = date =>{
+        this.setState({date});
+    }
+
+    onEnviar = (e)=>{
+        console.log(this.state.title,this.state.content,
+            this.state.userselected,
+            this.state.date);
+        e.preventDefault();
+    } 
+
+10)En este último paso, vamos ha enfrentarnos a la actualización de las notas;
+cada lista contará con un botón que nos permitirá  dirigirnos y entregar un id único al componente de creación de notas;
+    <Link to={"/edit/"+note._id}  className="btn btn-secondary">
+    Edit
+    </Link>
+Este es el objeto de router que hereda a los demás componentes, y que, por defecto lo hereda. Así atrapamos el id que incuimos en la ruta anterior.
+this.props.match.params.id;
+
+ Luego de conseguido el id, vamos a implementar las siguientes solicitudes con axios, para ello y correspondiente actualización de las notas deseadas.
+         this.state = {
+            users:[],
+            userselected:'',
+            title:'',
+            content:'',
+            date: new Date(),
+            editing:false,
+            _id:''
+        }
+    } 
+    
+    async componentDidMount(){
+
+        const  users = await axios.get("http://localhost:4000/api/users")
+        
+        this.setState({users:users.data.map(user => user.username ),
+        userselected:users.data[0].username
+        });
+
+        if(this.props.match.params.id){
+            const res = await axios.get(`http://localhost:4000/api/notes/`
+            + this.props.match.params.id);
+            this.setState({
+                userselected:res.data.author,
+                title:res.data.title,
+                content:res.data.content,
+                date:res.data.date,
+                editing:true,
+                _id:this.props.match.params.id
+            })
+        }
+    }
+    
+    onEnviar = async(e)=>{
+        
+        e.preventDefault();
+        const newNotes = {
+            title:this.state.title,
+            content:this.state.content,
+            date:new Date(this.state.date),
+            author:this.state.userselected
+        };
+
+        if(this.state.editing){
+
+            await axios.put(`http://localhost:4000/api/notes/`+this.state._id,
+            newNotes)
+        }else{
+            await axios.post(`http://localhost:4000/api/notes`,
+            newNotes)
+        }
+        window.location.href = "/";
+
+
+los input tendrán sus valores competentes.        
